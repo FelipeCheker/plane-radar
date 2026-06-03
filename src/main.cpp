@@ -1,4 +1,5 @@
 #include "secrets.h"
+#include "config.h"
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -8,17 +9,10 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-const double USER_LAT = -34.8553040;
-const double USER_LON = -55.9908691;
 unsigned long lastApiUpdate = 0;
-const unsigned long API_INTERVAL = 30000;
 unsigned long lastScreenChange = 0;
-const unsigned long SCREEN_INTERVAL = 6000;
 DynamicJsonDocument doc(65536);
 String currentRegion = "UY";
-String URL_URUGUAY = "https://opensky-network.org/api/states/all?lamin=-35.5&lomin=-57.5&lamax=-33.5&lomax=-54.0";
-String URL_REGIONAL = "https://opensky-network.org/api/states/all?lamin=-40&lomin=-65&lamax=-25&lomax=-45";
-String URL_WORLD = "https://opensky-network.org/api/states/all";
 int radarFrame = 0;
 unsigned long lastRadarFrame = 0;
 
@@ -36,9 +30,6 @@ struct Aircraft
 Aircraft nearestPlanes[10];
 int planeCount = 0;
 int currentPlane = 0;
-
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
 
 Adafruit_SSD1306 display(
     SCREEN_WIDTH,
@@ -215,36 +206,19 @@ JsonArray openSkyAPI(String url)
 }
 
 JsonArray getAircraftData()
+{
+    for (const auto& region : REGIONS)
     {
-        JsonArray states;
-    
-        states = openSkyAPI(URL_URUGUAY);
-    
-        if(!states.isNull() && states.size() > 0)
+        JsonArray states = openSkyAPI(region.url);
+
+        if (!states.isNull() && states.size() > 0)
         {
-            currentRegion = "UY";
+            currentRegion = region.name;
             return states;
         }
-    
-        states = openSkyAPI(URL_REGIONAL);
-    
-        if(!states.isNull() && states.size() > 0)
-        {
-            currentRegion = "REG";
-            return states;
-        }
-    
-        states = openSkyAPI(URL_WORLD);
-    
-        if(!states.isNull() && states.size() > 0)
-        {
-            currentRegion = "WORLD";
-            return states;
-        }
-    
-        currentRegion = "NONE";
-    
-        return JsonArray();
+    }
+
+    return JsonArray();
 }
 
 void showSearchingAnimation()
@@ -260,14 +234,12 @@ void showSearchingAnimation()
     int cy = 28;
     int radius = 25;
 
-    // Radar
     display.drawCircle(cx, cy, radius, WHITE);
     display.drawCircle(cx, cy, radius / 2, WHITE);
 
     display.drawLine(cx - radius, cy, cx + radius, cy, WHITE);
     display.drawLine(cx, cy - radius, cx, cy + radius, WHITE);
 
-    // Sweep
     float angle =
         radians(radarFrame * 12);
 
@@ -286,7 +258,6 @@ void showSearchingAnimation()
         y,
         WHITE);
 
-    // Ecos falsos
     if(radarFrame % 2 == 0)
     {
         display.fillCircle(
@@ -314,7 +285,6 @@ void showSearchingAnimation()
             WHITE);
     }
 
-    // Región
     display.setTextSize(1);
 
     display.setCursor(0,0);
@@ -322,7 +292,6 @@ void showSearchingAnimation()
     display.print("SRC:");
     display.print(currentRegion);
 
-    // Hora UTC aproximada
     unsigned long uptime =
         millis() / 1000;
 
@@ -360,54 +329,6 @@ void showSearchingAnimation()
         radarFrame = 0;
 }
 
-void updateDisplay()
-{
-    if(planeCount == 0)
-    {
-        showSearchingAnimation();
-        return;
-    }
-
-    Aircraft p = nearestPlanes[currentPlane];
-
-    display.clearDisplay();
-    display.setCursor(0,0);
-
-    display.setTextColor(WHITE);
-
-    display.setTextSize(2);
-    display.println(p.callsign);
-
-    display.setTextSize(1);
-    
-//    display.print("Aircraft: ");
-//    loadModelIfNeeded(p);
-//    display.println(p.model);
-
-    display.print("Distance: ");
-    display.print((int)p.distance);
-    display.println("km");
-
-    display.print("Altitude: ");
-    display.print((int)(p.altitude * 3.28084));
-    display.println("ft");
-
-    float speedKmh = p.speed * 3.6;
-    display.print("Speed: ");
-    display.print((int)speedKmh);
-    display.println(" km/h");
-
-    display.print("Heading: ");
-    display.print((int)p.heading);
-    display.print(" ");
-    display.println(headingArrow(p.heading));
-
-    display.print("Source: ");
-    display.println(currentRegion);
-
-    display.display();
-}
-
 void showPlaneWithScroll(Aircraft p)
 {
     if(planeCount == 0)
@@ -423,17 +344,11 @@ void showPlaneWithScroll(Aircraft p)
 
         int x = 0;
 
-        // Callsign (queda arriba fijo relativo)
         display.setTextSize(2);
         display.setCursor(x, offset);
         display.println(p.callsign);
 
         display.setTextSize(1);
-
-//        display.setCursor(0, offset + 12);
-//        display.print("Aircraft: ");
-//        loadModelIfNeeded(p);
-//        display.println(p.model);
 
         display.setCursor(x, offset + 18);
         display.print("Distance: ");
@@ -505,7 +420,6 @@ void updateNearestPlane()
           nearestPlanes[planeCount].speed = plane[9].isNull() ? 0 : plane[9].as<double>();
           nearestPlanes[planeCount].heading = plane[10].isNull() ? 0 : plane[10].as<double>();
           nearestPlanes[planeCount].icao24 = plane[0].isNull() ? "" : plane[0].as<String>();
-          //nearestPlanes[planeCount].model = "";
           planeCount++;
       }
   }
@@ -526,59 +440,7 @@ void updateNearestPlane()
       }
   }
 
-  //updateDisplay();
   showPlaneWithScroll(nearestPlanes[currentPlane]);
-}
-
-void transitionToNextPlane(int nextIndex)
-{
-    Aircraft from = nearestPlanes[currentPlane];
-    Aircraft to = nearestPlanes[nextIndex];
-
-    for(int i = 0; i <= 8; i++)
-    {
-        display.clearDisplay();
-
-        int offsetFrom = -i * 16;   // se va a la izquierda
-        int offsetTo   = (8 - i) * 16; // entra desde la derecha
-
-        display.setTextColor(WHITE);
-
-        // -------- AVION SALIENDO --------
-        display.setCursor(offsetFrom, 0);
-        display.setTextSize(2);
-        display.println(from.callsign);
-
-        display.setTextSize(1);
-        display.setCursor(offsetFrom, 20);
-        display.print("D:");
-        display.print((int)from.distance);
-        display.print("km");
-
-        display.setCursor(offsetFrom, 32);
-        display.print("SPD:");
-        display.print((int)(from.speed * 3.6));
-
-        // -------- AVION ENTRANDO --------
-        display.setCursor(offsetTo, 0);
-        display.setTextSize(2);
-        display.println(to.callsign);
-
-        display.setTextSize(1);
-        display.setCursor(offsetTo, 20);
-        display.print("D:");
-        display.print((int)to.distance);
-        display.print("km");
-
-        display.setCursor(offsetTo, 32);
-        display.print("SPD:");
-        display.print((int)(to.speed * 3.6));
-
-        display.display();
-        delay(25);
-    }
-
-    currentPlane = nextIndex;
 }
 
 void setup()
@@ -596,22 +458,19 @@ void setup()
 
 void loop()
 {
-    if(millis() - lastApiUpdate > API_INTERVAL)
+    if(millis() - lastApiUpdate > API_INTERVAL_MS)
     {
         updateNearestPlane();
-
         lastApiUpdate = millis();
     }
 
     if(
-        planeCount > 0 && millis() - lastScreenChange > SCREEN_INTERVAL)
+        planeCount > 0 && millis() - lastScreenChange > SCREEN_INTERVAL_MS)
     {
         int next = currentPlane + 1;
         if(next >= planeCount)
           next = 0;
         
-        transitionToNextPlane(next);
-        //updateDisplay();
         static int lastPlane = -1;
         if(lastPlane != currentPlane)
         {

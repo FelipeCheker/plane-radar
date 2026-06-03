@@ -1,0 +1,7 @@
+#pragma once
+
+#define WIFI_SSID "YOUR_WIFI"
+#define WIFI_PASSWORD "YOUR_PASSWORD"
+
+#define OPENSKY_USER "YOUR_USER"
+#define OPENSKY_PASSWORD "YOUR_PASSWORD"
