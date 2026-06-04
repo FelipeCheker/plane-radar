@@ -1,5 +1,6 @@
 #pragma once
 
+#include "helpers/Domain/Region.h"
 // ====================
 // USER LOCATION
 // ====================
@@ -19,12 +20,6 @@ constexpr unsigned long SCREEN_INTERVAL_MS = 6000;
 // ====================
 
 constexpr const char* DEFAULT_REGION = "UY";
-
-struct Region
-{
-    const char* name;
-    const char* url;
-};
 
 constexpr Region REGIONS[] =
 {
