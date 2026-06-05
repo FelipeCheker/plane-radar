@@ -5,6 +5,7 @@
 #include "helpers/Domain/Aircraft.h"
 #include "helpers/Domain/Region.h"
 #include "helpers/Location/LatLongCalculation/locationManager.h"
+#include "helpers/Results/AircraftResult.h"
 #include <Arduino.h>
 #include <config.h>
 
@@ -76,62 +77,76 @@ JsonArray getAircraftData(Adafruit_SSD1306 &display)
     return JsonArray();
 }
 
-void updateNearestPlane(Adafruit_SSD1306 &display, int planeCount)
+AircraftResult updateNearestPlane(Adafruit_SSD1306 &display, int &planeCount)
 {
-  planeCount = 0;
-  JsonArray states = getAircraftData(display);
+    planeCount = 0;
+    JsonArray states = getAircraftData(display);
 
-  if(states.size() == 0){
-    showError("NOAIRCRAFT", display);
-    return;
-  }
-  else if(states.isNull())
-  {
-      showError("API ERROR", display);
-      return;
-  }
+    if(states.isNull())
+    {
+        showError("API ERROR", display);
+        planeCount = 0;
+        return AircraftResult();
+    }
 
-  for(JsonArray plane : states)
-  {
-      if(plane[5].isNull()) continue;
-      if(plane[6].isNull()) continue;
+    if(states.size() == 0)
+    {
+        showError("NOAIRCRAFT", display);
+        planeCount = 0;
+        return AircraftResult();
+    }
 
-      double lon = plane[5];
-      double lat = plane[6];
+    for(JsonArray plane : states)
+    {
+        if(plane[5].isNull()) continue;
+        if(plane[6].isNull()) continue;
 
-      double distance =
-          haversine(
-              USER_LAT,
-              USER_LON,
-              lat,
-              lon);
+        double lon = plane[5];
+        double lat = plane[6];
 
-      if(planeCount < 10 && distance < 300)
-      {
-          nearestPlanes[planeCount].callsign = plane[1].isNull() ? "UNKNOWN" : plane[1].as<String>();
-          nearestPlanes[planeCount].callsign.trim();
-          nearestPlanes[planeCount].distance = distance;
-          nearestPlanes[planeCount].altitude = plane[7].isNull() ? 0 : plane[7].as<double>();
-          nearestPlanes[planeCount].speed = plane[9].isNull() ? 0 : plane[9].as<double>();
-          nearestPlanes[planeCount].heading = plane[10].isNull() ? 0 : plane[10].as<double>();
-          nearestPlanes[planeCount].icao24 = plane[0].isNull() ? "" : plane[0].as<String>();
-          planeCount++;
-      }
-  }
+        double distance =
+            haversine(
+                USER_LAT,
+                USER_LON,
+                lat,
+                lon);
 
-  for(int i=0;i<planeCount-1;i++)
-  {
-      for(int j=i+1;j<planeCount;j++)
-      {
-          if(nearestPlanes[j].distance <
-             nearestPlanes[i].distance)
-          {
-              Aircraft tmp = nearestPlanes[i];
-  
-              nearestPlanes[i] = nearestPlanes[j];
-  
-              nearestPlanes[j] = tmp;
-          }
-      }
-  }
+        if(planeCount < 10 && distance < 300)
+        {
+            nearestPlanes[planeCount].callsign = plane[1].isNull() ? "UNKNOWN" : plane[1].as<String>();
+            nearestPlanes[planeCount].callsign.trim();
+            nearestPlanes[planeCount].distance = distance;
+            nearestPlanes[planeCount].altitude = plane[7].isNull() ? 0 : plane[7].as<double>();
+            nearestPlanes[planeCount].speed = plane[9].isNull() ? 0 : plane[9].as<double>();
+            nearestPlanes[planeCount].heading = plane[10].isNull() ? 0 : plane[10].as<double>();
+            nearestPlanes[planeCount].icao24 = plane[0].isNull() ? "" : plane[0].as<String>();
+            planeCount++;
+        }
+    }
+
+    for(int i=0;i<planeCount-1;i++)
+    {
+        for(int j=i+1;j<planeCount;j++)
+        {
+            if(nearestPlanes[j].distance <
+                nearestPlanes[i].distance)
+            {
+                Aircraft tmp = nearestPlanes[i];
+    
+                nearestPlanes[i] = nearestPlanes[j];
+    
+                nearestPlanes[j] = tmp;
+            }
+        }
+    }
+
+    AircraftResult result;
+    for(int i = 0; i < planeCount; i++)
+    {
+        result.planes[i] = nearestPlanes[i];
+    }
+    result.planeCount = planeCount;
+    result.region = currentRegion;
+
+    return result;
 }

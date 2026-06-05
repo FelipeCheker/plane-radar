@@ -12,7 +12,7 @@ constexpr double USER_LON = -55.9908691;
 // API REFRESH
 // ====================
 
-constexpr unsigned long API_INTERVAL_MS = 30000;
+constexpr unsigned long API_INTERVAL_MS = 300000;
 constexpr unsigned long SCREEN_INTERVAL_MS = 6000;
 
 // ====================
@@ -30,11 +30,11 @@ constexpr Region REGIONS[] =
     {
         "REG",
         "https://opensky-network.org/api/states/all?lamin=-40&lomin=-65&lamax=-25&lomax=-45"
-    },
-    {
-        "WORLD",
-        "https://opensky-network.org/api/states/all"
     }
+    // {
+    //     "WORLD",
+    //     "https://opensky-network.org/api/states/all"
+    // }
 };
 
 // ====================

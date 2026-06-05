@@ -1,115 +1,103 @@
 #include <Arduino.h>
 #include <Adafruit_SSD1306.h>
+#include "config.h"
+#include "helpers/Animations/Frames/frame01.h"
+#include "helpers/Animations/Frames/frame02.h"
+#include "helpers/Animations/Frames/frame03.h"
+#include "helpers/Animations/Frames/frame04.h"
+#include "helpers/Animations/Frames/frame05.h"
+#include "helpers/Animations/Frames/frame06.h"
+#include "helpers/Animations/Frames/frame07.h"
+#include "helpers/Animations/Frames/frame08.h"
+#include "helpers/Animations/Frames/frame09.h"
+#include "helpers/Animations/Frames/frame10.h"
+#include "helpers/Animations/Frames/frame11.h"
+#include "helpers/Animations/Frames/frame12.h"
+
 
 int radarFrame = 0;
 unsigned long lastRadarFrame = 0;
 
-void showSearchingAnimation(Adafruit_SSD1306 &display, String currentRegion)
+enum SearchAnimationState
 {
-    if(millis() - lastRadarFrame < 100)
+    RADAR_SEARCH,
+    F18_FAR,
+    F18_APPROACH_1,
+    F18_APPROACH_2,
+    F18_APPROACH_3,
+    F18_COCKPIT,
+    F18_RADAR
+};
+
+void playWaitingAnimation(Adafruit_SSD1306& display)
+{
+    static int frame = 0;
+    static unsigned long lastFrame = 0;
+
+    if(millis() - lastFrame < 120)
         return;
 
-    lastRadarFrame = millis();
+    lastFrame = millis();
 
     display.clearDisplay();
 
-    int cx = 64;
-    int cy = 28;
-    int radius = 25;
-
-    display.drawCircle(cx, cy, radius, WHITE);
-    display.drawCircle(cx, cy, radius / 2, WHITE);
-
-    display.drawLine(cx - radius, cy, cx + radius, cy, WHITE);
-    display.drawLine(cx, cy - radius, cx, cy + radius, WHITE);
-
-    float angle =
-        radians(radarFrame * 12);
-
-    int x =
-        cx +
-        cos(angle) * radius;
-
-    int y =
-        cy +
-        sin(angle) * radius;
-
-    display.drawLine(
-        cx,
-        cy,
-        x,
-        y,
-        WHITE);
-
-    if(radarFrame % 2 == 0)
+    switch(frame)
     {
-        display.fillCircle(
-            cx + 10,
-            cy - 15,
-            2,
-            WHITE);
+        case 0:
+            display.drawBitmap(0,0,frame01,128,64,WHITE);
+            break;
+
+        case 1:
+            display.drawBitmap(0,0,frame02,128,64,WHITE);
+            break;
+
+        case 2:
+            display.drawBitmap(0,0,frame03,128,64,WHITE);
+            break;
+
+        case 3:
+            display.drawBitmap(0,0,frame04,128,64,WHITE);
+            break;
+
+        case 4:
+            display.drawBitmap(0,0,frame05,128,64,WHITE);
+            break;
+
+        case 5:
+            display.drawBitmap(0,0,frame06,128,64,WHITE);
+            break;
+
+        case 6:
+            display.drawBitmap(0,0,frame07,128,64,WHITE);
+            break;
+
+        case 7:
+            display.drawBitmap(0,0,frame08,128,64,WHITE);
+            break;
+
+        case 8:
+            display.drawBitmap(0,0,frame09,128,64,WHITE);
+            break;
+
+        case 9:
+            display.drawBitmap(0,0,frame10,128,64,WHITE);
+            break;
+
+        case 10:
+            display.drawBitmap(0,0,frame11,128,64,WHITE);
+            break;
+
+        case 11:
+            display.drawBitmap(0,0,frame12,128,64,WHITE);
+            break;
     }
-
-    if(radarFrame % 3 == 0)
-    {
-        display.fillCircle(
-            cx - 18,
-            cy + 8,
-            2,
-            WHITE);
-    }
-
-    if(radarFrame % 4 == 0)
-    {
-        display.fillCircle(
-            cx + 20,
-            cy + 12,
-            2,
-            WHITE);
-    }
-
-    display.setTextSize(1);
-
-    display.setCursor(0,0);
-
-    display.print("SRC:");
-    display.print(currentRegion);
-
-    unsigned long uptime =
-        millis() / 1000;
-
-    int sec =
-        uptime % 60;
-
-    int min =
-        (uptime / 60) % 60;
-
-    int hour =
-        (uptime / 3600) % 24;
-
-    display.setCursor(80,0);
-
-    char timeBuffer[10];
-
-    sprintf(
-        timeBuffer,
-        "%02d:%02d:%02d",
-        hour,
-        min,
-        sec);
-
-    display.print(timeBuffer);
-
-    display.setCursor(22,55);
-
-    display.print("SEARCHING");
 
     display.display();
 
-    radarFrame++;
+    frame++;
 
-    if(radarFrame >= 30)
-        radarFrame = 0;
+    if(frame >= 12)
+        frame = 0;
 }
 
 String headingArrow(double heading)
