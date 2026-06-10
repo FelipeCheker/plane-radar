@@ -11,4 +11,6 @@ struct Aircraft
     double speed;
     double heading;
     String icao24;
+    String origin;
+    String destination;
 };

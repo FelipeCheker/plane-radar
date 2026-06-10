@@ -1,0 +1,10 @@
+{
+  "GLO7651": {
+    "origin": "GRU",
+    "destination": "MVD"
+  },
+  "CMP368": {
+    "origin": "PTY",
+    "destination": "EZE"
+  }
+}

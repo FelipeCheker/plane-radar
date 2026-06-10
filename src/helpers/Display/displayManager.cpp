@@ -144,46 +144,6 @@ void showAircraftList(Aircraft planes[], int planeCount, int selected, Adafruit_
     display.display();
 }
 
-void showAircraftDetail(Aircraft p, Adafruit_SSD1306& display, int planeCount)
-{
-    if(planeCount == 0)
-    {
-        playWaitingAnimation(display);
-        return;
-    }
-
-    display.clearDisplay();
-
-    display.setTextSize(2);
-    display.setCursor(0,0);
-    display.println(p.callsign);
-
-    display.setTextSize(1);
-
-    display.print("Distance: ");
-    display.print((int)p.distance);
-    display.println("km");
-
-    display.print("Altitude : ");
-    display.print((int)(p.altitude * 3.28084));
-    display.println("ft");
-
-    display.print("Speed : ");
-    display.print((int)(p.speed * 3.6));
-    display.println("km/h");
-
-    display.print("Heading : ");
-    display.print((int)p.heading);
-    display.print(" ");
-    display.println(
-        headingArrow(p.heading));
-
-    display.print("Source: ");
-    display.println(currentRegion);
-
-    display.display();
-}
-
 void showPlaneDetail(Aircraft p, Adafruit_SSD1306& display, int planeCount)
 {
     if(planeCount == 0)
@@ -197,7 +157,8 @@ void showPlaneDetail(Aircraft p, Adafruit_SSD1306& display, int planeCount)
         "FT  SPD:" + String((int)(p.speed * 1.944)) +
         "KNT  HDG:" + String((int)p.heading) +
         "  D:" + String((int)p.distance) +
-        "KM  SRC:" + currentRegion + "   ";
+        "KM  SRC:" + currentRegion + "   " +
+        "M:" + p.model;
 
     display.setTextWrap(false);
 
@@ -219,28 +180,81 @@ void showPlaneDetail(Aircraft p, Adafruit_SSD1306& display, int planeCount)
     {
         display.clearDisplay();
 
-        // Callsign fijo
         display.setTextSize(2);
         display.setCursor(0,0);
         display.print(p.callsign);
 
-        // Línea separadora
-        display.drawLine(
-            0,
-            18,
-            SCREEN_WIDTH,
-            18,
-            WHITE);
+        display.drawLine(0,18,SCREEN_WIDTH,18,WHITE);
 
-        // Datos deslizándose
-        display.setCursor(x,30);
+        display.setCursor(x,28);
         display.print(info);
 
+        if(p.origin != "" && p.destination != "")
+        {
+            display.setCursor(0,50);
+            display.print(p.origin);
+            display.print(">");
+            display.print(p.destination);
+        }
         display.display();
 
         delay(25);
     }
 }
+
+// void animateListToDetail(Aircraft planes[],int planeCount,int selected,Adafruit_SSD1306& display)
+// {
+//     for(int offset = 0;
+//         offset <= SCREEN_WIDTH;
+//         offset += 4)
+//     {
+//         display.clearDisplay();
+
+//         showAircraftList(
+//             planes,
+//             planeCount,
+//             selected,
+//             display,
+//             -offset);
+
+//         showPlaneDetail(
+//             planes[selected],
+//             display,
+//             planeCount,
+//             SCREEN_WIDTH - offset);
+
+//         display.display();
+
+//         delay(15);
+//     }
+// }
+
+// void animateDetailToList(Aircraft planes[],int planeCount,int selected,Adafruit_SSD1306& display)
+// {
+//     for(int offset = 0;
+//         offset <= SCREEN_WIDTH;
+//         offset += 4)
+//     {
+//         display.clearDisplay();
+
+//         showPlaneDetail(
+//             planes[selected],
+//             display,
+//             planeCount,
+//             offset);
+
+//         showAircraftList(
+//             planes,
+//             planeCount,
+//             selected,
+//             display,
+//             offset - SCREEN_WIDTH);
+
+//         display.display();
+
+//         delay(15);
+//     }
+// }
 
 void animateAircraftList(Aircraft planes[], int planeCount, int oldSelected, int newSelected, Adafruit_SSD1306& display)
 {
