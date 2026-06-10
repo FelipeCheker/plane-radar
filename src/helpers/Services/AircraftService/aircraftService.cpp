@@ -6,11 +6,12 @@
 #include "helpers/Domain/Region.h"
 #include "helpers/Location/LatLongCalculation/locationManager.h"
 #include "helpers/Results/AircraftResult.h"
+#include "helpers/Services/AircraftCacheService/aircraftCacheService.h"
 #include <Arduino.h>
 #include <config.h>
 
 DynamicJsonDocument doc(65536);
-Aircraft nearestPlanes[10];
+Aircraft nearestPlanes[MAX_AIRCRAFT];
 String currentRegion = "UY";
 
 JsonArray openSkyAPI(String url, Adafruit_SSD1306 &display)
@@ -77,6 +78,161 @@ JsonArray getAircraftData(Adafruit_SSD1306 &display)
     return JsonArray();
 }
 
+String getAircraftModelFromApi(String icao24)
+{
+    HTTPClient http;
+
+    String url =
+        "https://api.adsbdb.com/v0/aircraft/" +
+        icao24;
+
+    Serial.println(url);
+
+    http.begin(url);
+
+    int code = http.GET();
+
+    Serial.print("Metadata HTTP Code: ");
+    Serial.println(code);
+
+    if(code != 200)
+    {
+        http.end();
+        return "";
+    }
+
+    String payload = http.getString();
+
+    http.end();
+
+    DynamicJsonDocument doc(4096);
+
+    DeserializationError err =
+        deserializeJson(doc, payload);
+
+    if(err)
+    {
+        Serial.println(err.c_str());
+        return "";
+    }
+
+    JsonObject aircraft =
+        doc["response"]["aircraft"];
+
+    if(aircraft.isNull())
+    {
+        return "";
+    }
+
+    String manufacturer =
+        aircraft["manufacturer"] |
+        "";
+
+    String type =
+        aircraft["type"] |
+        "";
+
+    if(manufacturer == "" &&
+       type == "")
+    {
+        return "";
+    }
+
+    return manufacturer + " " + type;
+}
+
+void resolveAircraftMetadata(Aircraft& aircraft)
+{
+    if(aircraft.icao24 == "")
+        return;
+
+    HTTPClient http;
+
+    String url =
+    "https://api.adsbdb.com/v0/aircraft/" +
+    aircraft.icao24 +
+    "?callsign=" +
+    aircraft.callsign;
+
+    Serial.println(url);
+
+    http.begin(url);
+
+    int code = http.GET();
+
+    Serial.print("Metadata HTTP Code: ");
+    Serial.println(code);
+
+    if(code != 200)
+    {
+        aircraft.model = "UNKNOWN AIRCRAFT";
+        aircraft.origin = "";
+        aircraft.destination = "";
+
+        http.end();
+
+        return;
+    }
+
+    String payload =
+        http.getString();
+
+    http.end();
+
+    Serial.println(payload);
+
+    DynamicJsonDocument doc(8192);
+
+    DeserializationError error =
+        deserializeJson(doc, payload);
+
+    if(error)
+    {
+        Serial.println(error.c_str());
+        return;
+    }
+
+    JsonObject response =
+        doc["response"];
+
+    if(response.isNull())
+        return;
+
+    // Modelo
+    if(!response["aircraft"].isNull())
+    {
+        aircraft.model =
+            response["aircraft"]["type"]
+                .as<String>();
+    }
+
+    // Ruta
+    if(!response["flightroute"].isNull())
+    {
+        aircraft.origin =
+            response["flightroute"]
+                   ["origin"]
+                   ["iata_code"]
+                   .as<String>();
+
+        aircraft.destination =
+            response["flightroute"]
+                   ["destination"]
+                   ["iata_code"]
+                   .as<String>();
+    }
+
+    Serial.println(
+        "MODEL: " +
+        aircraft.model);
+
+    Serial.println(
+        "ROUTE: " +
+        aircraft.origin +
+        " > " +
+        aircraft.destination);
+}
+
 AircraftResult updateNearestPlane(Adafruit_SSD1306 &display, int &planeCount)
 {
     planeCount = 0;
@@ -111,7 +267,7 @@ AircraftResult updateNearestPlane(Adafruit_SSD1306 &display, int &planeCount)
                 lat,
                 lon);
 
-        if(planeCount < 10 && distance < 300)
+        if(planeCount < MAX_AIRCRAFT && distance < MAX_DISTANCE_KM)
         {
             nearestPlanes[planeCount].callsign = plane[1].isNull() ? "UNKNOWN" : plane[1].as<String>();
             nearestPlanes[planeCount].callsign.trim();
@@ -120,6 +276,11 @@ AircraftResult updateNearestPlane(Adafruit_SSD1306 &display, int &planeCount)
             nearestPlanes[planeCount].speed = plane[9].isNull() ? 0 : plane[9].as<double>();
             nearestPlanes[planeCount].heading = plane[10].isNull() ? 0 : plane[10].as<double>();
             nearestPlanes[planeCount].icao24 = plane[0].isNull() ? "" : plane[0].as<String>();
+            nearestPlanes[planeCount].model = "";
+            nearestPlanes[planeCount].model = "";
+            nearestPlanes[planeCount].origin = "";
+            nearestPlanes[planeCount].destination = "";
+            resolveAircraftMetadata(nearestPlanes[planeCount]);  
             planeCount++;
         }
     }

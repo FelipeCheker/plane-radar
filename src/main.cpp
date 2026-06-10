@@ -13,6 +13,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "helpers/Services/AircraftCacheService/aircraftCacheService.h"
 
 unsigned long lastApiUpdate = 0;
 unsigned long lastScreenChange = 0;
@@ -34,6 +35,7 @@ void setup()
     Wire.begin(21,22);
     initDisplay(display);
     connectWifi(display);
+    initCache();
     AircraftResult result = updateNearestPlane(display, planeCount);
     planeCount = result.planeCount;
 
@@ -83,7 +85,6 @@ void loop()
     }
     else
     {
-        //showAircraftDetail(nearestPlanes[currentPlane], display, planeCount);
         showPlaneDetail(planes[currentPlane], display, planeCount);
         
         if(millis() - screenTimer > 5000)
